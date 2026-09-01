@@ -1,0 +1,217 @@
+{
+  "id": "6ff31cf2-72c4-450c-816c-2a52077acae1",
+  "name": "LAIM oos oot test",
+  "description": "Тест на различие oos и oot выборок из llm_val",
+  "fullDescription": "",
+  "ui": {
+    "settings": [
+      {
+        "page": "General",
+        "title": "General",
+        "components": [
+          {
+            "type": "form",
+            "label": "Настройки теста",
+            "config": {
+              "components": [
+                {
+                  "parameter": "data_types",
+                  "label": "Типы данных в Sampler",
+                  "uiComponent": "input",
+                  "type": "string",
+                  "defaultValue": "('train', 'test')"
+                },
+                {
+                  "parameter": "yellow_threshold",
+                  "label": "Нижняя граница желтой зоны (Gini)",
+                  "uiComponent": "input",
+                  "type": "float",
+                  "defaultValue": 0.4
+                },
+                {
+                  "parameter": "red_threshold",
+                  "label": "Нижняя граница красной зоны (Gini)",
+                  "uiComponent": "input",
+                  "type": "float",
+                  "defaultValue": 0.8
+                },
+                {
+                  "parameter": "resampling_iterations",
+                  "label": "Количество итераций ресемплинга",
+                  "uiComponent": "input",
+                  "type": "integer",
+                  "defaultValue": 20
+                },
+                {
+                  "parameter": "test_size",
+                  "label": "Размер тестовой выборки",
+                  "uiComponent": "input",
+                  "type": "float",
+                  "defaultValue": 0.3
+                },
+                {
+                  "parameter": "catboost_iterations",
+                  "label": "CatBoost: количество деревьев",
+                  "uiComponent": "input",
+                  "type": "integer",
+                  "defaultValue": 300
+                },
+                {
+                  "parameter": "catboost_learning_rate",
+                  "label": "CatBoost: learning rate",
+                  "uiComponent": "input",
+                  "type": "float",
+                  "defaultValue": 0.1
+                },
+                {
+                  "parameter": "catboost_depth",
+                  "label": "CatBoost: глубина",
+                  "uiComponent": "input",
+                  "type": "integer",
+                  "defaultValue": 4
+                },
+                {
+                  "parameter": "catboost_early_stopping_rounds",
+                  "label": "CatBoost: early stopping rounds",
+                  "uiComponent": "input",
+                  "type": "integer",
+                  "defaultValue": 30
+                },
+                {
+                  "parameter": "random_state",
+                  "label": "Random state",
+                  "uiComponent": "input",
+                  "type": "integer",
+                  "defaultValue": 17
+                },
+                {
+                  "parameter": "is_info",
+                  "label": "Тест информативный?",
+                  "uiComponent": "checkbox",
+                  "defaultValue": false
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "uiResults": {
+      "semaphore": {
+        "port": "all_results",
+        "dataKey": "color"
+      }
+    },
+    "result": {
+      "title": "Results",
+      "components": [
+        {
+          "label": "Результат теста",
+          "type": "semaphore",
+          "config": {
+            "datasets": [
+              {
+                "value": "$.all_results.calculated_traffic_lights.test_light",
+                "title": "$.all_results.calculated_traffic_lights.semaphore_title"
+              }
+            ]
+          },
+          "order": 1,
+          "showOnWorkflow": true
+        },
+        {
+          "type": "html",
+          "label": "Описание теста",
+          "uiComponent": "html",
+          "parameter": "$.test_description",
+          "config": {
+            "datasets": [
+              {
+                "data": "$.test_description"
+              }
+            ]
+          },
+          "order": 2
+        }
+      ]
+    }
+  },
+  "ports": [
+    {
+      "name": "reference_umr",
+      "label": "Reference UMR",
+      "in": true,
+      "type": "dataframe",
+      "shape": "shape_dataframe",
+      "description": "Эталонный плоский laim-umr.v2",
+      "required": true,
+      "order": 1
+    },
+    {
+      "name": "monitoring_umr",
+      "label": "Monitoring UMR",
+      "in": true,
+      "type": "dataframe",
+      "shape": "shape_dataframe",
+      "description": "Выход monitoring_umr TDC; QA/dialogue нормализуется внутри Drift",
+      "required": true,
+      "order": 2
+    },
+    {
+      "name": "monitoring_metric",
+      "label": "Monitoring metric",
+      "in": true,
+      "type": "default",
+      "shape": "shape_model",
+      "description": "Валидированный контракт laim-monitoring-metric.v2",
+      "required": true,
+      "order": 3
+    },
+    {
+      "name": "all_results",
+      "label": "all_results",
+      "in": false,
+      "type": "default",
+      "shape": "shape_model",
+      "description": "Результаты прохождения теста",
+      "order": 4
+    },
+    {
+      "name": "test_description",
+      "label": "test_description",
+      "in": false,
+      "type": "hidden",
+      "shape": "shape_model",
+      "description": "Описание теста",
+      "order": 5
+    }
+  ],
+  "script": {
+    "type": "python",
+    "baseImageKey": "py312-simple",
+    "deployType": "docker",
+    "runConfiguration": {
+      "libraryDependencies": [
+        "requirements.txt"
+      ],
+      "sourceFiles": [
+        "main.py",
+        "html_report_helper.py",
+        "llm_val/report_helper.py",
+        "llm_val/sampler.py",
+        "llm_val/scorer.py",
+        "llm_val/utils.py",
+        "llm_val/valtest_adversarial_test.py",
+        "laim_monitoring/__init__.py",
+        "laim_monitoring/core.py"
+      ],
+      "functionName": "main",
+      "functionParameters": [],
+      "output": {
+        "type": "json",
+        "output": []
+      }
+    }
+  },
+  "shape": "other"
+}
