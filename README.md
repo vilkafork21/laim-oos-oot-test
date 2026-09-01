@@ -89,9 +89,9 @@ jinja2
 from main import main
 
 result = main(
-    real_asessor_df=df_real,
-    auto_asessor_df=df_agent,
-    metric_selector_res={"main_metric": "metric_name"},
+    reference_umr=reference_umr,
+    monitoring_umr=monitoring_umr,
+    monitoring_metric=monitoring_metric,
     metric_agg="single_mean",
     resampling_iterations=20,
     test_size=0.3,
