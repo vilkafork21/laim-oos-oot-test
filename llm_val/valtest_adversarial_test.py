@@ -22,6 +22,8 @@ from tqdm.auto import tqdm
 from llm_val.report_helper import semaphore_by_threshold
 from llm_val.sampler import Sampler
 
+logger = logging.getLogger(__name__)
+
 
 # Минимальное количество наблюдений в каждой из выборок для интерпретируемого Gini.
 # Ниже этой границы тест автоматически возвращает gray (см. P2-4).
@@ -257,7 +259,7 @@ def valtest_adversarial_text(
 
     if gini_value is None:
         cols_to_use = ["question"]
-        logging.info(f"Колонки для использования: {cols_to_use}")
+        logger.info(f"Колонки для использования: {cols_to_use}")
 
         base_columns = cols_to_use + (
             [GROUP_COLUMN] if GROUP_COLUMN in sampler.train["X"] else []
@@ -273,9 +275,9 @@ def valtest_adversarial_text(
         )
 
         # Guardrail на минимальный размер выборок (P2-4)
-        logging.info(f"Размер OOS={n_base}, OOT={n_new}")
+        logger.info(f"Размер OOS={n_base}, OOT={n_new}")
         if min(n_base_groups, n_new_groups) < MIN_SAMPLES_PER_CLASS:
-            logging.warning(
+            logger.warning(
                 f"Одна из выборок < {MIN_SAMPLES_PER_CLASS} независимых групп: "
                 f"OOS={n_base_groups}, OOT={n_new_groups}. Тест неинформативен."
             )
@@ -301,7 +303,7 @@ def valtest_adversarial_text(
             base_data["question"], new_data["question"]
         )
         if normalization_diagnostics is not None:
-            logging.warning(
+            logger.warning(
                 "Перед OOS-OOT удалён sample-exclusive структурный префикс; "
                 "diagnostics=%s",
                 normalization_diagnostics,
@@ -310,7 +312,7 @@ def valtest_adversarial_text(
         gini_values = []
         iterator = tqdm(range(resampling_iterations)) if use_tqdm else range(resampling_iterations)
         for iteration in iterator:
-            logging.info(f"Итерация #{iteration}")
+            logger.info(f"Итерация #{iteration}")
             adversarial_dataset = make_adversarial_dataset(
                 base_data,
                 new_data,
@@ -327,7 +329,7 @@ def valtest_adversarial_text(
                     random_state=int(model_seeds[iteration]),
                 )
             )
-            logging.info(f"Gini iter#{iteration}: {gini_values[-1]:.4f}")
+            logger.info(f"Gini iter#{iteration}: {gini_values[-1]:.4f}")
 
         gini_array = np.asarray(gini_values, dtype=float)
         gini_value = float(np.mean(gini_array))
