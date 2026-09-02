@@ -193,7 +193,7 @@ laim_monitoring/core.py              контракт laim-monitoring-metric.v2,
 llm_val/valtest_adversarial_test.py  guardrail, нормализация префикса, group-split, CatBoost, Gini, CI
 llm_val/sampler.py                   AutoAsessorSampler: reference -> train (OOS), monitoring -> test (OOT)
 llm_val/report_helper.py             semaphore_by_threshold и прочие светофоры библиотеки llm_val
-llm_val/utils.py, llm_val/scorer.py  string_to_float; скореры llm_val, нодой не вызываются
+llm_val/utils.py                     string_to_float для семплера
 html_report_helper.py                HTML-светофоры и таблица критериев
 tests/                               контракт, единицы наблюдения, drift-фреймы, main для qa/dialogue
 ```
