@@ -54,7 +54,6 @@ laim-kriteria-selector.validated_monitoring_metric ─┘         │
 
 | Настройка | По умолчанию | Зачем менять |
 |---|---|---|
-| `data_types` | `('train', 'test')` | Не влияет на расчёт: значение разбирается через `literal_eval` и передаётся в `valtest_adversarial_text`, где не используется. Оставлять по умолчанию |
 | `yellow_threshold` | `0.4` | Нижняя граница жёлтой зоны Gini |
 | `red_threshold` | `0.8` | Нижняя граница красной зоны Gini. Пороги сортируются: перепутанные местами значения дают тот же результат |
 | `resampling_iterations` | `20` | Число повторных разбиений; меньше 1 — падение `ValueError` |

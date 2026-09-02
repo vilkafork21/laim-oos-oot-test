@@ -169,11 +169,12 @@ def report_valtest_oos_oot(res, semaphore_title):
                 "semaphore_title": semaphore_title,
             },
             "color": platform_color,
-            "status": pre.get(
-                "status", "not_computable" if platform_color == "gray" else "computed"
-            ),
-            "reason_code": pre.get("reason_code"),
-            "reason": pre.get("reason"),
+            # Серый — всегда not_computable: пара gray/computed для агрегатора
+            # противоречие, а информационный режим не даёт вердикта.
+            "status": "not_computable" if platform_color == "gray" else pre.get("status", "computed"),
+            "reason_code": pre.get("reason_code") or ("informational" if platform_color == "gray" else None),
+            "reason": pre.get("reason") or ("информационный режим: вердикт не выставляется"
+                                            if platform_color == "gray" else None),
             "gini_mean": _num(pre.get("gini_value")),
             "gini_std": _num(pre.get("gini_std")),
             "gini_ci_lower": _num(pre.get("gini_ci_lower")),
