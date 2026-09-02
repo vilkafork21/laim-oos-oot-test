@@ -15,13 +15,6 @@
             "config": {
               "components": [
                 {
-                  "parameter": "data_types",
-                  "label": "Типы данных в Sampler",
-                  "uiComponent": "input",
-                  "type": "string",
-                  "defaultValue": "('train', 'test')"
-                },
-                {
                   "parameter": "yellow_threshold",
                   "label": "Нижняя граница желтой зоны (Gini)",
                   "uiComponent": "input",
@@ -199,7 +192,6 @@
         "html_report_helper.py",
         "llm_val/report_helper.py",
         "llm_val/sampler.py",
-        "llm_val/scorer.py",
         "llm_val/utils.py",
         "llm_val/valtest_adversarial_test.py",
         "laim_monitoring/__init__.py",

@@ -206,3 +206,17 @@ def test_descriptor_describes_monitoring_umr():
     )
     assert "monitoring_umr" in monitoring_port["description"]
     assert "parquet_test_dataset" not in monitoring_port["description"]
+
+
+def test_informational_gray_is_not_computable():
+    # Серый по is_info обязан идти как not_computable с причиной: агрегатор
+    # отвергает пару gray/computed как противоречие.
+    import main as oos
+
+    res = {"report": {"semaphore": "gray"},
+           "precomputed": {"gini_value": 0.1, "gini_std": 0.01, "gini_ci_lower": 0.08,
+                           "gini_ci_upper": 0.12, "n_oos": 100, "n_oot": 100,
+                           "n_oos_groups": 60, "n_oot_groups": 60, "status": "computed"}}
+    light = oos.report_valtest_oos_oot(res, "title")["all_results"]
+    assert light["color"] == "gray" and light["status"] == "not_computable"
+    assert light["reason"]
