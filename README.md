@@ -105,21 +105,21 @@ JSON-список всех запросов диалога; в `turn_with_histor
 ### Пример лога прогона (эталон 283 диалога, мониторинг 94)
 
 ```text
-INFO root: Agent columns: ['question', 'answer', 'target'], размер: 94
-INFO root: Real columns: ['question', 'answer', 'target'], размер: 283
-INFO root: Тест OOS-OOT запущен
-INFO root: Колонки для использования: ['question']
-INFO root: Размер OOS=283, OOT=94
-INFO root: Итерация #0
-INFO root: Gini iter#0: 0.2320
-INFO root: {'report': {'semaphore': 'green', ...}, 'precomputed': {'status': 'computed', 'gini_value': 0.3902231237322515, 'gini_std': 0.07720653836698857, 'gini_ci_lower': np.float64(0.3563858663854292), 'gini_ci_upper': np.float64(0.4240603810790738), 'resampling_iterations': 20, 'n_oos': 283, 'n_oot': 94, 'n_oos_groups': 283, 'n_oot_groups': 94, 'input_normalization': None}}
+INFO llm_val.sampler: Agent columns: ['question', 'answer', 'target'], размер: 94
+INFO llm_val.sampler: Real columns: ['question', 'answer', 'target'], размер: 283
+INFO main: Тест OOS-OOT запущен
+INFO llm_val.valtest_adversarial_test: Колонки для использования: ['question']
+INFO llm_val.valtest_adversarial_test: Размер OOS=283, OOT=94
+INFO llm_val.valtest_adversarial_test: Итерация #0
+INFO llm_val.valtest_adversarial_test: Gini iter#0: 0.2320
+INFO main: {'report': {'semaphore': 'green', ...}, 'precomputed': {'status': 'computed', 'gini_value': 0.3902231237322515, 'gini_std': 0.07720653836698857, 'gini_ci_lower': np.float64(0.3563858663854292), 'gini_ci_upper': np.float64(0.4240603810790738), 'resampling_iterations': 20, 'n_oos': 283, 'n_oot': 94, 'n_oos_groups': 283, 'n_oot_groups': 94, 'input_normalization': None}}
 ```
 
 Итерации 1–19 пропущены. Серый исход и нормализация видны как WARNING:
 
 ```text
-WARNING root: Одна из выборок < 50 независимых групп: OOS=<n_oos_groups>, OOT=<n_oot_groups>. Тест неинформативен.
-WARNING root: Перед OOS-OOT удалён sample-exclusive структурный префикс; diagnostics={'method': 'sample_exclusive_identifier_prefix', ...}
+WARNING llm_val.valtest_adversarial_test: Одна из выборок < 50 независимых групп: OOS=<n_oos_groups>, OOT=<n_oot_groups>. Тест неинформативен.
+WARNING llm_val.valtest_adversarial_test: Перед OOS-OOT удалён sample-exclusive структурный префикс; diagnostics={'method': 'sample_exclusive_identifier_prefix', ...}
 ```
 
 ## Форматы выхода и контракты
@@ -177,7 +177,7 @@ WARNING root: Перед OOS-OOT удалён sample-exclusive структур�
 
 ## Наблюдаемость
 
-Лог платформы (корневой логгер `logging`): размеры OOS/OOT, Gini каждой
+Лог платформы (логгеры по имени модуля): размеры OOS/OOT, Gini каждой
 итерации, полный словарь результата, WARNING по guardrail и нормализации.
 Отдельного порта журнала нет: источник истины — `all_results` в `laim-agg`.
 Триаж на сотне прогонов — по его полям: `status` и `reason_code` (сколько
