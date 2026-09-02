@@ -18,6 +18,8 @@ from laim_monitoring import prepare_drift_frames
 # Импортируем вспомогательные функции для HTML отчета
 from html_report_helper import display_semaphore, show_criteria_semaphore
 
+logger = logging.getLogger(__name__)
+
 
 # =============================================================================
 # ФУНКЦИИ ФОРМИРОВАНИЯ ОТЧЕТОВ
@@ -241,7 +243,7 @@ def main(
     sampler.test["X"]["_group_id"] = monitoring_frame[
         "reference_group_id"
     ].reset_index(drop=True)
-    logging.info("Тест OOS-OOT запущен")
+    logger.info("Тест OOS-OOT запущен")
     res = valtest_adversarial_text(
         sampler=sampler,
         semaphore_threshold=semaphore_threshold,
@@ -255,7 +257,7 @@ def main(
         random_state=random_state,
         is_info=is_info,
     )
-    logging.info(res)
+    logger.info(res)
 
     semaphore_color = res["report"]["semaphore"]
 

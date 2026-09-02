@@ -13,6 +13,8 @@ from copy import deepcopy
 import pandas as pd
 from llm_val.utils import string_to_float
 
+logger = logging.getLogger(__name__)
+
 
 # =============================================================================
 # БАЗОВЫЙ КЛАСС
@@ -125,8 +127,8 @@ class AutoAsessorSampler(Sampler):
 
         agent_df = process_df(agent_df, "agent")
         real_df = process_df(real_df, "real")
-        logging.info(f"Agent columns: {list(agent_df.columns)}, размер: {len(agent_df)}")
-        logging.info(f"Real columns: {list(real_df.columns)}, размер: {len(real_df)}")
+        logger.info(f"Agent columns: {list(agent_df.columns)}, размер: {len(agent_df)}")
+        logger.info(f"Real columns: {list(real_df.columns)}, размер: {len(real_df)}")
 
         train_data = {
             "X": real_df[["question", "answer"]].reset_index(drop=True),
@@ -174,7 +176,7 @@ class AutoAsessorSampler(Sampler):
             )
 
         if skipped:
-            logging.warning(
+            logger.warning(
                 f"[{df_name}] пропущено {skipped} строк из-за неразобранного 'history'"
             )
         return pd.DataFrame(records)
