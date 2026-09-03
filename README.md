@@ -67,8 +67,11 @@ laim-kriteria-selector.validated_monitoring_metric ─┘         │
 
 ## Как проходит прогон
 
-**1. Контракт и drift-фреймы.** `prepare_drift_frames` валидирует
-`monitoring_metric`, приводит оба UMR к единицам наблюдения по
+**1. Контракт и drift-фреймы.** `main` сначала валидирует
+`monitoring_metric`. При входном `status: not_computable` нода сразу возвращает
+серый результат с исходными `reason_code` и `reason`, не читая UMR и не запуская
+CatBoost. Для вычислимого контракта `prepare_drift_frames` приводит оба UMR
+к единицам наблюдения по
 `assessment_mode` и собирает фреймы `question`, `answer` (пустая), `target`
 (`main_metric`), `reference_group_id`. В `dialogue` `question` —
 JSON-список всех запросов диалога; в `turn_with_history` — история запросов
@@ -156,7 +159,7 @@ WARNING llm_val.valtest_adversarial_test: Перед OOS-OOT удалён sample
 
 | Причина | Исключение |
 |---|---|
-| `monitoring_metric` не object, неизвестная версия, нет `assessment_mode` (контракт без плана измерения), нарушен `scoring` | `MonitoringContractError` |
+| `monitoring_metric` не object, неизвестная версия, в вычислимом контракте нет `assessment_mode`, нарушен `scoring` | `MonitoringContractError` |
 | UMR пуст, не DataFrame, ни плоская, ни `dialogue`-форма, смешаны обе формы, пустой `query_id`/`session_id`; `monitoring_umr` — нечитаемый parquet | `MonitoringContractError` |
 | В `reference_umr` нет `main_metric`; пустой `main_metric` при `missing_policy: fail` | `MonitoringContractError` |
 | `resampling_iterations < 1` | `ValueError` |
@@ -165,6 +168,7 @@ WARNING llm_val.valtest_adversarial_test: Перед OOS-OOT удалён sample
 
 | Событие | Реакция |
 |---|---|
+| Входной `monitoring_metric.status: not_computable` | серый, исходные `reason_code`/`reason`, вычислительный путь пропущен |
 | Меньше 50 независимых групп в OOS или OOT | серый, `status: not_computable`, `reason_code: insufficient_independent_groups`, WARNING |
 | `is_info = true` | серый, `status: computed`, Gini и CI заполнены |
 | Sample-exclusive identifier-префикс в вопросах | префикс удалён, `input_normalization` заполнен, WARNING |
@@ -207,9 +211,8 @@ tests/                               контракт, единицы наблю
 - **Красный при похожих по смыслу выборках** — смотрите
   `input_normalization`: если `null`, а вопросы мониторинга несут служебные
   префиксы или иное форматирование, классификатор различает форму.
-- **`MonitoringContractError` про `assessment_mode`** — `monitoring_metric`
-  без плана измерения (`not_computable` у `laim-baskets-adapter`); чинить
-  артефакты корзины, а не эту ноду.
+- **Серый с причиной из `monitoring_metric`** — upstream не смог построить
+  план измерения; чинить артефакты корзины, а не эту ноду.
 
 ## Деплой
 
