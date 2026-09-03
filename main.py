@@ -13,7 +13,7 @@ import pandas as pd
 
 from llm_val.sampler import AutoAsessorSampler
 from llm_val.valtest_adversarial_test import valtest_adversarial_text
-from laim_monitoring import prepare_drift_frames
+from laim_monitoring import prepare_drift_frames, validate_monitoring_metric
 
 # Импортируем вспомогательные функции для HTML отчета
 from html_report_helper import display_semaphore, show_criteria_semaphore
@@ -223,6 +223,33 @@ def main(
     - Гиперпараметры CatBoost выведены в UI (P1-1)
     - Убраны неиспользуемые параметры (P2-6)
     """
+    contract = validate_monitoring_metric(monitoring_metric, require_computed=False)
+    if contract["status"] == "not_computable":
+        logger.warning(
+            "Тест OOS-OOT не вычисляется: %s",
+            contract.get("reason", "причина не указана"),
+        )
+        report_result = report_valtest_oos_oot(
+            {
+                "report": {"semaphore": "gray"},
+                "precomputed": {
+                    "status": "not_computable",
+                    "reason_code": contract.get("reason_code"),
+                    "reason": contract.get("reason"),
+                },
+            },
+            "Результат теста разделения выборок не может быть оценен",
+        )
+        report_result["all_results"].update(
+            reason_code=contract.get("reason_code"),
+            reason=contract.get("reason"),
+            test_name="oos_oot",
+        )
+        return {
+            "all_results": report_result["all_results"],
+            "test_description": report_result["hidden_port"],
+        }
+
     # Защитный literal_eval — поддерживает и tuple, и строку из UI (P1-6 из global, аналогично)
     if isinstance(data_types, str):
         data_types = literal_eval(data_types)
