@@ -29,6 +29,13 @@
                   "defaultValue": 0.8
                 },
                 {
+                  "parameter": "min_groups_per_side",
+                  "label": "Минимум независимых групп в каждой выборке",
+                  "uiComponent": "input",
+                  "type": "integer",
+                  "defaultValue": 50
+                },
+                {
                   "parameter": "resampling_iterations",
                   "label": "Количество итераций ресемплинга",
                   "uiComponent": "input",
@@ -161,13 +168,23 @@
       "order": 3
     },
     {
+      "name": "reference_stable_umr",
+      "label": "Эталонная выборка стабильного периода",
+      "in": true,
+      "type": "dataframe",
+      "shape": "shape_dataframe",
+      "required": false,
+      "description": "UMR стабильного периода ПРОМ (карточка 6.3.6); если задан — используется вместо корзины валидации и тест становится светофорным (максимум жёлтый)",
+      "order": 4
+    },
+    {
       "name": "all_results",
       "label": "all_results",
       "in": false,
       "type": "default",
       "shape": "shape_model",
-      "description": "Результаты прохождения теста",
-      "order": 4
+      "description": "Результаты прохождения теста; вердикт по нижней границе разброса Gini; reference_source (validation_basket — информативный переходный режим, stable_period — светофорный), informative, min_groups_per_side",
+      "order": 5
     },
     {
       "name": "test_description",
@@ -176,7 +193,7 @@
       "type": "hidden",
       "shape": "shape_model",
       "description": "Описание теста",
-      "order": 5
+      "order": 6
     }
   ],
   "script": {

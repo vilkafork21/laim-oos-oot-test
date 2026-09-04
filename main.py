@@ -201,9 +201,11 @@ def main(
     reference_umr: pd.DataFrame,
     monitoring_umr: pd.DataFrame,
     monitoring_metric: dict,
+    reference_stable_umr: pd.DataFrame | None = None,
     data_types: tuple = ("train", "test"),
     yellow_threshold: float = 0.4,
     red_threshold: float = 0.8,
+    min_groups_per_side: int = 50,
     is_info: bool = False,
     resampling_iterations: int = 20,
     test_size: float = 0.3,
@@ -259,6 +261,14 @@ def main(
         min(yellow_threshold, red_threshold),
         max(yellow_threshold, red_threshold),
     )
+    # Карточка 6.3.6: сравнивать поток нужно с эталонной выборкой стабильного
+    # периода ПРОМ; корзина первичной валидации — переходное положение, и тогда
+    # результат информативен (устойчивая разделимость отражает способ
+    # формирования корзины, а не изменение потока).
+    reference_source = "validation_basket"
+    if reference_stable_umr is not None and len(reference_stable_umr) > 0:
+        reference_umr = reference_stable_umr
+        reference_source = "stable_period"
     reference_frame, monitoring_frame = prepare_drift_frames(
         reference_umr, monitoring_umr, monitoring_metric
     )
@@ -283,6 +293,7 @@ def main(
         catboost_early_stopping_rounds=catboost_early_stopping_rounds,
         random_state=random_state,
         is_info=is_info,
+        min_groups_per_side=min_groups_per_side,
     )
     logger.info(res)
 
@@ -296,6 +307,12 @@ def main(
     }[semaphore_color]
 
     report_result = report_valtest_oos_oot(res, semaphore_title)
+    report_result["all_results"].update(
+        reference_source=reference_source,
+        informative=reference_source == "validation_basket",
+        verdict_statistic="gini_ci_lower",
+        min_groups_per_side=min_groups_per_side,
+    )
     report_result["all_results"]["test_name"] = "oos_oot"
 
     return {

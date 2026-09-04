@@ -58,11 +58,15 @@ def report_valtest_adversarial_text(
     Returns:
         Словарь с результатами теста в формате llm_val
     """
+    # Вердикт по нижней границе разброса Gini по ресемплам: цвет не должен
+    # держаться на единичном удачном разбиении. Это разброс, а не доверительный
+    # интервал генеральной совокупности.
+    verdict_value = gini_ci[0] if not np.isnan(gini_ci[0]) else gini_value
     color = (
         "gray"
-        if is_info or np.isnan(gini_value)
+        if is_info or np.isnan(verdict_value)
         else semaphore_by_threshold(
-            gini_value,
+            verdict_value,
             threshold=semaphore_threshold,
             greater_is_better=False,
             left_border_is_bigger=True,
@@ -227,6 +231,7 @@ def valtest_adversarial_text(
     use_tqdm: bool = False,
     is_info: bool = False,
     gini_value: tp.Optional[float] = None,
+    min_groups_per_side: int = MIN_SAMPLES_PER_CLASS,
     **kwargs,
 ) -> tp.Dict[str, tp.Any]:
     """
@@ -276,9 +281,9 @@ def valtest_adversarial_text(
 
         # Guardrail на минимальный размер выборок (P2-4)
         logger.info(f"Размер OOS={n_base}, OOT={n_new}")
-        if min(n_base_groups, n_new_groups) < MIN_SAMPLES_PER_CLASS:
+        if min(n_base_groups, n_new_groups) < min_groups_per_side:
             logger.warning(
-                f"Одна из выборок < {MIN_SAMPLES_PER_CLASS} независимых групп: "
+                f"Одна из выборок < {min_groups_per_side} независимых групп: "
                 f"OOS={n_base_groups}, OOT={n_new_groups}. Тест неинформативен."
             )
             return _not_computable(
@@ -287,7 +292,7 @@ def valtest_adversarial_text(
                 reason=(
                     "Недостаточно независимых единиц наблюдения: "
                     f"min(n_oos_groups={n_base_groups}, "
-                    f"n_oot_groups={n_new_groups}) < {MIN_SAMPLES_PER_CLASS}"
+                    f"n_oot_groups={n_new_groups}) < {min_groups_per_side}"
                 ),
                 n_oos=n_base,
                 n_oot=n_new,
