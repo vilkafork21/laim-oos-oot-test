@@ -250,3 +250,72 @@ def test_informational_gray_is_not_computable():
     light = oos.report_valtest_oos_oot(res, "title")["all_results"]
     assert light["color"] == "gray" and light["status"] == "not_computable"
     assert light["reason"]
+
+
+def test_verdict_uses_lower_bound_of_resample_spread():
+    import math
+
+    from llm_val.valtest_adversarial_test import report_valtest_adversarial_text
+
+    # Среднее 0.45 дало бы жёлтый, но нижняя граница разброса 0.35 — зелёный.
+    assert report_valtest_adversarial_text(0.45, 0.05, (0.35, 0.55))["semaphore"] == "green"
+    assert report_valtest_adversarial_text(0.85, 0.02, (0.81, 0.89))["semaphore"] == "red"
+    assert report_valtest_adversarial_text(0.45, 0.05, (math.nan, math.nan))["semaphore"] == "yellow"
+
+
+def test_stable_reference_and_min_groups_are_passed(monkeypatch):
+    import main as drift
+
+    captured = {}
+
+    def fake_valtest(*, sampler, **kwargs):
+        captured["sizes"] = (len(sampler.train["X"]), len(sampler.test["X"]))
+        captured["min_groups"] = kwargs.get("min_groups_per_side")
+        return {
+            "report": {"semaphore": "green"},
+            "precomputed": {
+                "status": "computed", "gini_value": 0.1, "gini_std": 0.0,
+                "gini_ci_lower": 0.1, "gini_ci_upper": 0.1,
+                "n_oos": 3, "n_oot": 2, "n_oos_groups": 3, "n_oot_groups": 2,
+            },
+        }
+
+    monkeypatch.setattr(drift, "valtest_adversarial_text", fake_valtest)
+    basket = pd.DataFrame({
+        "query_id": ["r1", "r2"], "input_query": ["вопрос 1", "вопрос 2"],
+        "output_answer": ["ответ 1", "ответ 2"], "main_metric": [1.0, 0.0],
+    })
+    stable = pd.DataFrame({
+        "query_id": ["s1", "s2", "s3"], "input_query": ["в1", "в2", "в3"],
+        "output_answer": ["о1", "о2", "о3"], "main_metric": [1.0, 1.0, 0.0],
+    })
+    monitoring = basket.drop(columns=["main_metric"])
+
+    transitional = drift.main(basket, monitoring, _contract("qa"), min_groups_per_side=2)
+    assert captured["sizes"] == (2, 2) and captured["min_groups"] == 2
+    assert transitional["all_results"]["reference_source"] == "validation_basket"
+    assert transitional["all_results"]["informative"] is True
+    assert transitional["all_results"]["verdict_statistic"] == "gini_ci_lower"
+
+    stable_run = drift.main(
+        basket, monitoring, _contract("qa"), reference_stable_umr=stable, min_groups_per_side=2
+    )
+    assert captured["sizes"] == (3, 2)
+    assert stable_run["all_results"]["reference_source"] == "stable_period"
+    assert stable_run["all_results"]["informative"] is False
+
+
+def test_descriptor_declares_stable_reference_port_and_min_groups():
+    descriptor = json.loads(
+        (Path(__file__).resolve().parents[1] / "descriptor.json").read_text()
+    )
+    ports = {port["name"]: port for port in descriptor["ports"]}
+    assert ports["reference_stable_umr"]["required"] is False
+    assert ports["reference_stable_umr"]["type"] == "dataframe"
+    settings = {
+        item["parameter"]: item["defaultValue"]
+        for section in descriptor["ui"]["settings"]
+        for component in section["components"]
+        for item in component["config"]["components"]
+    }
+    assert settings["min_groups_per_side"] == 50
