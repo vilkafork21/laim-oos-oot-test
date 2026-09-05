@@ -1,5 +1,15 @@
 # laim-oos-oot-test
 
+## Контракт research-dev v3
+
+Нода принимает только подтверждённое определение измерения. Reference и monitoring
+проверяются по `definition_id` и `dataset_role` до построения drift-фреймов.
+Переход v2 → v3 не автоматический: требуется согласованный комплект нод.
+Математический смысл и ограничения алгоритма ниже не переоценивались этим переносом;
+общий статистический и нагрузочный допуск остаётся отдельным этапом исследования.
+
+`reference_stable_umr` — корзина стабильного мониторингового периода: ожидается `dataset_role=monitoring` и то же определение КМ. Первичная корзина остаётся переходным информативным baseline.
+
 Нода мониторингового контура LAIM: тест разделимости выборок OOS/OOT.
 Принимает **эталонную корзину** (`reference_umr`), **данные мониторинга**
 (`monitoring_umr`) и **валидированный контракт метрики**
@@ -55,7 +65,7 @@ laim-kriteria-selector.validated_monitoring_metric ─┘         │
 |---|---|---|
 | `reference_umr` | dataframe | Эталонная корзина `laim-umr.v2`: плоская форма `query_id`/`input_query`/`output_answer` либо упакованный `dialogue`; `main_metric` обязателен |
 | `monitoring_umr` | dataframe | Выход `laim-traces-dataset-converter` в том же формате без `main_metric`; DataFrame, parquet-байты или путь к parquet |
-| `monitoring_metric` | default | Контракт `laim-monitoring-metric.v2` c `assessment_mode` (`qa`, `turn_with_history`, `dialogue`); `v1` поднимается автоматически |
+| `monitoring_metric` | default | Контракт `laim-monitoring-metric.v3` c `assessment_mode` (`qa`, `turn_with_history`, `dialogue`); `v1` поднимается автоматически |
 | `reference_stable_umr` | нет | UMR эталонной выборки стабильного периода ПРОМ (карточка 6.3.6). Если задан и не пуст — используется вместо корзины первичной валидации, `reference_source = stable_period`, результат светофорный (максимум жёлтый по таблице 15). Без него сравнение идёт с корзиной валидации: `reference_source = validation_basket`, `informative = true` — переходное положение методики, светофор итерации не формирует |
 
 ### Выходы
@@ -209,7 +219,7 @@ WARNING llm_val.valtest_adversarial_test: Перед OOS-OOT удалён sample
 
 ```text
 main.py                              порты платформы, светофор в словарь платформы, HTML-отчёт
-laim_monitoring/core.py              контракт laim-monitoring-metric.v2, единицы наблюдения, prepare_drift_frames
+laim_monitoring/core.py              контракт laim-monitoring-metric.v3, единицы наблюдения, prepare_drift_frames
 llm_val/valtest_adversarial_test.py  guardrail, нормализация префикса, group-split, CatBoost, Gini, CI
 llm_val/sampler.py                   AutoAsessorSampler: reference -> train (OOS), monitoring -> test (OOT)
 llm_val/report_helper.py             semaphore_by_threshold и прочие светофоры библиотеки llm_val

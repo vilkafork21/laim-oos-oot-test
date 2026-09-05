@@ -270,7 +270,8 @@ def main(
         reference_umr = reference_stable_umr
         reference_source = "stable_period"
     reference_frame, monitoring_frame = prepare_drift_frames(
-        reference_umr, monitoring_umr, monitoring_metric
+        reference_umr, monitoring_umr, monitoring_metric,
+        reference_role="monitoring" if reference_source == "stable_period" else "reference",
     )
 
     sampler = AutoAsessorSampler(agent_df=monitoring_frame, real_df=reference_frame)

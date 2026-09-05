@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from measurement_fixture import reviewed_metric
+
 import json
 from pathlib import Path
 
@@ -12,8 +14,8 @@ from laim_monitoring import MonitoringContractError, unitize
 
 
 def _contract(mode: str) -> dict:
-    return {
-        "contract_version": "laim-monitoring-metric.v2", "umr_version": "laim-umr.v2",
+    return reviewed_metric({
+        "contract_version": "laim-monitoring-metric.v3", "umr_version": "laim-umr.v2",
         "status": "computed", "basket_id": "CI1", "name": "quality", "score_column": "main_metric",
         "assessment_mode": mode,
         "scoring": {
@@ -35,7 +37,7 @@ def _contract(mode: str) -> dict:
             "affects_monitoring": False,
         },
         "evidence": {},
-    }
+    })
 
 
 def test_packed_dialogue_reference_is_unitized_per_session():
@@ -98,7 +100,7 @@ def test_drift_frames_from_packed_reference_and_packed_monitoring():
         "input_query_count": [1, 1],
     })
 
-    ref_frame, mon_frame = prepare_drift_frames(reference, monitoring, contract)
+    ref_frame, mon_frame = prepare_drift_frames(reference.assign(definition_id=contract["definition_id"], dataset_role="reference"), monitoring.assign(definition_id=contract["definition_id"], dataset_role="monitoring"), contract)
 
     assert len(ref_frame) == 2  # единица drift — диалог
     assert len(mon_frame) == 2
@@ -129,7 +131,7 @@ def test_drift_frames_from_flat_monitoring_with_session_id():
         "output_answer": ["но1", "но2"],
     })
 
-    ref_frame, mon_frame = prepare_drift_frames(reference, monitoring, contract)
+    ref_frame, mon_frame = prepare_drift_frames(reference.assign(definition_id=contract["definition_id"], dataset_role="reference"), monitoring.assign(definition_id=contract["definition_id"], dataset_role="monitoring"), contract)
 
     assert len(ref_frame) == 2
     assert len(mon_frame) == 2
@@ -190,7 +192,7 @@ def test_main_accepts_qa_and_dialogue(mode, monkeypatch):
 
     monkeypatch.setattr(drift, "valtest_adversarial_text", fake_valtest)
 
-    result = drift.main(reference, monitoring, _contract(mode))
+    result = drift.main(reference.assign(definition_id=_contract(mode)["definition_id"], dataset_role="reference"), monitoring.assign(definition_id=_contract(mode)["definition_id"], dataset_role="monitoring"), _contract(mode))
 
     assert captured["sizes"] == (2, 2)
     assert captured["groups"] == (2, 2)
@@ -211,7 +213,7 @@ def test_not_computable_metric_skips_drift_computation(monkeypatch):
         object(),
         object(),
         {
-            "contract_version": "laim-monitoring-metric.v2",
+            "contract_version": "laim-monitoring-metric.v3",
             "umr_version": "laim-umr.v2",
             "status": "not_computable",
             "reason_code": "ambiguous_baseline",
@@ -291,6 +293,9 @@ def test_stable_reference_and_min_groups_are_passed(monkeypatch):
     })
     monitoring = basket.drop(columns=["main_metric"])
 
+    basket = basket.assign(definition_id=_contract("qa")["definition_id"], dataset_role="reference")
+    monitoring = monitoring.assign(definition_id=_contract("qa")["definition_id"], dataset_role="monitoring")
+    stable = stable.assign(definition_id=_contract("qa")["definition_id"], dataset_role="monitoring")
     transitional = drift.main(basket, monitoring, _contract("qa"), min_groups_per_side=2)
     assert captured["sizes"] == (2, 2) and captured["min_groups"] == 2
     assert transitional["all_results"]["reference_source"] == "validation_basket"
