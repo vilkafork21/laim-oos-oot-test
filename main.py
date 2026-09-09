@@ -16,127 +16,56 @@ from llm_val.valtest_adversarial_test import valtest_adversarial_text
 from laim_monitoring import prepare_drift_frames
 
 # Импортируем вспомогательные функции для HTML отчета
-from html_report_helper import display_semaphore, show_criteria_semaphore
+from html_report import format_report_number, render_test_report
 
 
 # =============================================================================
 # ФУНКЦИИ ФОРМИРОВАНИЯ ОТЧЕТОВ
 # =============================================================================
 
-def _table_styles():
-    return [
-        {"selector": "th", "props": [
-            ("background-color", "#f5f5f5"),
-            ("text-align", "center"),
-            ("border", "1px solid #ddd"),
-            ("padding", "5px"),
-        ]},
-        {"selector": "td", "props": [
-            ("text-align", "left"),
-            ("border", "1px solid #ddd"),
-            ("padding", "5px"),
-        ]},
-        {"selector": "", "props": [
-            ("border-collapse", "collapse"),
-            ("border", "1px solid black"),
-        ]},
-    ]
 
 
-def html_report_valtest_oos_oot(res, semaphore_title):
-    """
-    Функция для сборки html-отчета по тесту OOS-OOT.
-    """
-    table_styles = _table_styles()
 
-    green_criterion = "Gini < 0.4"
-    yellow_criterion = "0.4 ≤ Gini < 0.8"
-    red_criterion = "Gini ≥ 0.8"
-
-    criterion_df = show_criteria_semaphore(
-        green_criterion, yellow_criterion, red_criterion, table_styles
-    )
-    criterion_df_html = criterion_df.to_html(border=0, classes="table")
-
-    semaphore_color = res["report"]["semaphore"]
-    semaphore_html = display_semaphore(semaphore_color, return_html=True)
-
+def html_report_valtest_oos_oot(res: dict, semaphore_title: str) -> str:
     pre = res["precomputed"]
-    gini_value = pre.get("gini_value")
-    gini_std = pre.get("gini_std")
-    ci_low = pre.get("gini_ci_lower")
-    ci_high = pre.get("gini_ci_upper")
-    n_iter = pre.get("resampling_iterations")
-    reason = pre.get("reason")
     normalization = pre.get("input_normalization")
-
-    def _fmt(v, decimals=3):
-        if v is None:
-            return "n/a"
-        try:
-            if pd.isna(v):
-                return "n/a"
-        except (TypeError, ValueError):
-            pass
-        return f"{float(v):.{decimals}f}"
-
-    indicators = [
-        "Значение Gini (среднее)",
-        "Стандартное отклонение Gini",
-        "95% CI (нижняя)",
-        "95% CI (верхняя)",
-    ]
-    values = [
-        _fmt(gini_value),
-        _fmt(gini_std),
-        _fmt(ci_low),
-        _fmt(ci_high),
-    ]
-    if reason:
-        indicators.append("Причина невычислимости")
-        values.append(str(reason))
+    normalization_text = "Не применялась" if "input_normalization" in pre else "Не передана в результат теста"
     if normalization:
-        indicators.append("Нормализация входа")
-        values.append(
-            "Удалён sample-exclusive identifier-префикс: "
-            f"OOS={normalization['removed_oos']}, "
-            f"OOT={normalization['removed_oot']}"
+        normalization_text = (
+            "Удалён служебный префикс: "
+            f"OOS — {normalization.get('removed_oos', 0)}, OOT — {normalization.get('removed_oot', 0)}"
         )
-    indicators.append("Результат теста")
-    values.append(semaphore_html)
-    res_df = pd.DataFrame({"Показатель": indicators, "Значение": values})
-
-    try:
-        res_df_to_html = res_df.style.hide().set_table_styles(table_styles)
-    except AttributeError:
-        res_df_to_html = res_df.style.hide_index().set_table_styles(table_styles)
-    res_df_html = res_df_to_html.to_html(border=0, classes="table")
-
-    html_report = f"""
-<h2 style="text-align: center;">Разделение выборок OOS-OOT посредством стандартной модели</h2>
-<p style="text-align: left;"><b>Цель теста</b></p>
-<p style="text-align: left;">Оценить изменение выборки out-of-time по сравнению с валидационной выборкой out-of-sample посредством разделения выборок стандартной моделью.</p>
-<p style="text-align: left;"><b>Условия проведения</b></p>
-<ul style="text-align: left; margin-left: 20px; padding-left: 20px;">
-    <li style="text-align: left;">Для СЗ &gt; E</li>
-    <li style="text-align: left;">Минимум 50 независимых единиц наблюдения в каждой выборке (иначе серый светофор)</li>
-    <li style="text-align: left;">Sample-exclusive низкокардинальный identifier-префикс нейтрализуется и отражается в диагностике</li>
-</ul>
-<p style="text-align: left;"><b>Алгоритм расчета:</b></p>
-<ol style="text-align: left; margin-left: 20px; padding-left: 20px;">
-    <li>Составляется набор данных путем склеивания OOS (метка 0) и OOT (метка 1).</li>
-    <li>Нейтрализуется доказуемый технический identifier-префикс, если он почти эксклюзивен одной выборке.</li>
-    <li>Разбиение 70/30 по независимым dialogue/session/QA-группам без пересечения train/test.</li>
-    <li>Обучается CatBoost с текстовыми признаками и balanced class weights, early stopping по eval_set.</li>
-    <li>Считается Gini = max(0, 2·AUC − 1) на test.</li>
-    <li>Шаги 2–4 повторяются с независимыми seed'ами {n_iter if n_iter else 'несколько'} раз; в отчёт идут среднее, std и 95% CI среднего Gini.</li>
-</ol>
-<p style="text-align: left;"><b>Критерии выставления светофора</b></p>
-<div style="text-align: left; width: 100%;">{criterion_df_html}</div><br>
-<p style="text-align: left;"><b>Результаты теста</b></p>
-<div style="text-align: left; width: 100%;">{res_df_html}</div><br>
-"""
-    return html_report
+    bounds = [format_report_number(pre.get(key)) for key in ("gini_ci_lower", "gini_ci_upper")]
+    interval_text = "Не рассчитано" if "Не рассчитано" in bounds else f"[{bounds[0]}; {bounds[1]}]"
+    rows = [
+        ("Объём OOS / OOT (независимых единиц)",
+         f"{format_report_number(pre.get('n_oos_groups'), 0)} / {format_report_number(pre.get('n_oot_groups'), 0)}"),
+        ("Gini — различимость выборок (среднее)", format_report_number(pre.get("gini_value"))),
+        ("Число повторных разбиений", format_report_number(pre.get("resampling_iterations"), 0)),
+        ("Стандартное отклонение Gini", format_report_number(pre.get("gini_std"))),
+        ("95 % доверительный интервал среднего Gini",
+         interval_text),
+        ("Нормализация служебного префикса", normalization_text),
+    ]
+    return render_test_report(
+        "6.3.7", "Различимость выборок OOS–OOT",
+        "Оценить, насколько запросы пользователей за отчётный период (OOT) отличаются "
+        "от запросов эталонной корзины (OOS), с помощью модели классификации.",
+        rows, res["report"]["semaphore"],
+        "Чем выше Gini, тем легче отличить запросы текущего потока от эталона. "
+        "Зелёный результат означает слабую различимость, жёлтый — умеренный сдвиг, "
+        "красный — выраженные различия. При сдвиге рекомендуется разобрать новые тематики "
+        "и пополнить эталонную корзину. Тест не измеряет качество ответов решения. "
+        "При сером результате вывод о различимости не получен.",
+        "По методике: СЗ выше E и не менее 100 независимых единиц в каждой выборке. "
+        "Диалоги и сессии "
+        "не пересекаются между обучающей и тестовой частями.",
+        "Пороги по умолчанию: зелёный — Gini < 0,4; жёлтый — 0,4 ≤ Gini < 0,8; "
+        "красный — Gini ≥ 0,8. Серый: недостаточно независимых единиц, "
+        "значение не рассчитано, ширина доверительного интервала больше 0,2 или информационный режим.",
+        reason=pre.get("reason") or ("Оценка недоступна или выбран информационный режим."
+                                    if res["report"]["semaphore"] in ("gray", "grey") else ""),
+    )
 
 
 # Цвет, отдаваемый ПЛАТФОРМЕ и АГРЕГАТОРУ, должен быть в их словаре

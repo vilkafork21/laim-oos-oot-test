@@ -8,6 +8,7 @@ Adversarial test for OOS-OOT stability detection.
 """
 
 import json
+from decimal import Decimal
 import logging
 import re
 import typing as tp
@@ -25,7 +26,7 @@ from llm_val.sampler import Sampler
 
 # Минимальное количество наблюдений в каждой из выборок для интерпретируемого Gini.
 # Ниже этой границы тест автоматически возвращает gray (см. P2-4).
-MIN_SAMPLES_PER_CLASS = 50
+MIN_SAMPLES_PER_CLASS = 100
 GROUP_COLUMN = "_group_id"
 _STRUCTURAL_PREFIX = re.compile(r"^([A-Za-z][A-Za-z0-9_]*)\s+(.+)$", re.DOTALL)
 _PREFIX_SAMPLE_RATE = 0.95
@@ -58,7 +59,8 @@ def report_valtest_adversarial_text(
     """
     color = (
         "gray"
-        if is_info or np.isnan(gini_value)
+        if (is_info or not np.isfinite(gini_value)
+            or not np.isfinite(gini_ci).all() or Decimal(str(gini_ci[1])) - Decimal(str(gini_ci[0])) > Decimal("0.2"))
         else semaphore_by_threshold(
             gini_value,
             threshold=semaphore_threshold,
@@ -238,8 +240,8 @@ def valtest_adversarial_text(
     4. Процедура повторяется несколько раз с независимыми seed'ами (P1-4)
     5. Считается среднее, стандартное отклонение и 95% CI среднего Gini
     """
-    if resampling_iterations < 1:
-        raise ValueError("resampling_iterations должен быть положительным")
+    if resampling_iterations < 2:
+        raise ValueError("resampling_iterations должен быть не меньше 2 для оценки доверительного интервала")
 
     # Независимые RNG-потоки для split и для модели (P1-4)
     rng = np.random.default_rng(seed=random_state)
@@ -356,6 +358,14 @@ def valtest_adversarial_text(
     report = report_valtest_adversarial_text(
         gini_value, gini_std, gini_ci, semaphore_threshold, is_info
     )
+    if report["semaphore"] == "gray":
+        precomputed.update({
+            "status": "not_computable",
+            "reason_code": "unreliable_gini",
+            "reason": "Информационный режим" if is_info else
+                      "Доверительный интервал Gini не рассчитан или его ширина превышает 0,2",
+        })
+        logging.warning(precomputed["reason"])
     return {"report": report, "precomputed": precomputed}
 
 

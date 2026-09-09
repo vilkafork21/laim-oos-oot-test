@@ -197,6 +197,7 @@
       "sourceFiles": [
         "main.py",
         "html_report_helper.py",
+        "html_report.py",
         "llm_val/report_helper.py",
         "llm_val/sampler.py",
         "llm_val/scorer.py",
