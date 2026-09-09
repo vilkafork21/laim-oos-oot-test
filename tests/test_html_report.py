@@ -68,4 +68,4 @@ def test_normalization_not_applied_is_distinct_from_missing_details():
     payload = {"report": {"semaphore": "green"}, "precomputed": {"input_normalization": None}}
     assert "Не применялась" in NODE.html_report_valtest_oos_oot(payload, "Результат")
     del payload["precomputed"]["input_normalization"]
-    assert "Не передана в результат теста" in NODE.html_report_valtest_oos_oot(payload, "Результат")
+    assert "Нормализация служебного префикса" not in NODE.html_report_valtest_oos_oot(payload, "Результат")

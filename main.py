@@ -29,7 +29,7 @@ from html_report import format_report_number, render_test_report
 def html_report_valtest_oos_oot(res: dict, semaphore_title: str) -> str:
     pre = res["precomputed"]
     normalization = pre.get("input_normalization")
-    normalization_text = "Не применялась" if "input_normalization" in pre else "Не передана в результат теста"
+    normalization_text = "Не применялась"
     if normalization:
         normalization_text = (
             "Удалён служебный префикс: "
@@ -40,13 +40,15 @@ def html_report_valtest_oos_oot(res: dict, semaphore_title: str) -> str:
     rows = [
         ("Объём OOS / OOT (независимых единиц)",
          f"{format_report_number(pre.get('n_oos_groups'), 0)} / {format_report_number(pre.get('n_oot_groups'), 0)}"),
-        ("Gini — различимость выборок (среднее)", format_report_number(pre.get("gini_value"))),
-        ("Число повторных разбиений", format_report_number(pre.get("resampling_iterations"), 0)),
+        ((f"Gini (среднее по {format_report_number(pre['resampling_iterations'], 0)} разбиениям)"
+          if pre.get("resampling_iterations") is not None else "Gini (среднее)"),
+         format_report_number(pre.get("gini_value"))),
         ("Стандартное отклонение Gini", format_report_number(pre.get("gini_std"))),
         ("95 % доверительный интервал среднего Gini",
          interval_text),
-        ("Нормализация служебного префикса", normalization_text),
     ]
+    if "input_normalization" in pre:
+        rows.append(("Нормализация служебного префикса", normalization_text))
     return render_test_report(
         "6.3.7", "Различимость выборок OOS–OOT",
         "Оценить, насколько запросы пользователей за отчётный период (OOT) отличаются "
